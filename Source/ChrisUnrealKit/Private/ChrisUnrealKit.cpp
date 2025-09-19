@@ -2,6 +2,8 @@
 
 #include "ChrisUnrealKit.h"
 
+DEFINE_LOG_CATEGORY(LogChrisUE);
+
 #define LOCTEXT_NAMESPACE "FChrisUnrealKitModule"
 
 void FChrisUnrealKitModule::StartupModule()
