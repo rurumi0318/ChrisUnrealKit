@@ -106,14 +106,83 @@ public:
     static bool UStructToJsonString(const TStruct& InStruct, FString& OutJsonString)
     {
         TSharedPtr<FJsonObject> JsonObject = UStructToJsonObject(InStruct);
-        
+
         if (!JsonObject.IsValid())
         {
             return false;
         }
-        
+
         TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutJsonString);
         return FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
+    }
+
+    /**
+     * Partially updates a UStruct from JSON, preserving existing field values
+     * Only updates fields that exist in the JSON object
+     *
+     * Implementation: converts JSON to a temporary struct, then copies only
+     * the fields that were present in the original JSON.
+     *
+     * @param JsonObject The JSON object containing partial update data
+     * @param OutStruct The struct to partially update
+     * @return true if conversion was successful
+     */
+    template<typename TStruct>
+    static bool PartialJsonObjectToUStruct(const TSharedPtr<FJsonObject>& JsonObject, TStruct& OutStruct)
+    {
+        if (!JsonObject.IsValid())
+        {
+            return false;
+        }
+
+        // Convert JSON to a temporary struct using Unreal's standard converter
+        TStruct TempUpdateStruct;
+        if (!FJsonObjectConverter::JsonObjectToUStruct(JsonObject.ToSharedRef(), &TempUpdateStruct))
+        {
+            return false;
+        }
+
+        // Copy only the fields that were actually present in the JSON
+        for (const auto& JsonPair : JsonObject->Values)
+        {
+            const FString& Key = JsonPair.Key;
+
+            // Find the corresponding property using reflection
+            if (FProperty* StructProperty = TStruct::StaticStruct()->FindPropertyByName(FName(*Key)))
+            {
+                // Copy the single property value from temp struct to target struct
+                void* DestPtr = StructProperty->ContainerPtrToValuePtr<void>(&OutStruct);
+                const void* SrcPtr = StructProperty->ContainerPtrToValuePtr<void>(&TempUpdateStruct);
+                StructProperty->CopyCompleteValue(DestPtr, SrcPtr);
+            }
+        }
+
+        // Call PostJsonImport for custom fields (if it exists)
+        CallPostJsonImportIfExists(OutStruct, JsonObject);
+
+        return true;
+    }
+
+    /**
+     * Partially updates a UStruct from JSON string, preserving existing field values
+     * Only updates fields that exist in the JSON string
+     *
+     * @param JsonString The JSON string containing partial update data
+     * @param OutStruct The struct to partially update
+     * @return true if conversion was successful
+     */
+    template<typename TStruct>
+    static bool PartialJsonStringToUStruct(const FString& JsonString, TStruct& OutStruct)
+    {
+        TSharedPtr<FJsonObject> JsonObject;
+        TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
+
+        if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid())
+        {
+            return false;
+        }
+
+        return PartialJsonObjectToUStruct(JsonObject, OutStruct);
     }
     
 private:
