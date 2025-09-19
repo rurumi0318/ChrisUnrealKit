@@ -13,6 +13,8 @@
  * 
  * Usage:
  * - Add PostJsonImport/PostJsonExport methods to structs that need dynamic JSON fields
+ *   - void PostJsonImport(const TSharedPtr<FJsonObject>& JsonObject);
+ *   - TSharedPtr<FJsonObject> PostJsonExport(TSharedPtr<FJsonObject> JsonObject) const;
  * - Use ChrisUE::FEnhancedJsonConverter::JsonObjectToUStruct and UStructToJsonObject instead of FJsonObjectConverter
  */
 namespace ChrisUE
